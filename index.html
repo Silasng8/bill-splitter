@@ -46,7 +46,8 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
 .chip{border-radius:999px;padding:5px 12px;border:1.5px solid var(--c);background:transparent;color:var(--ink);font-size:.9rem}
 .chip[aria-pressed="true"]{background:var(--c);color:#fff;font-weight:600}
-.chip.all{border-color:var(--line);color:var(--muted);margin-left:auto}
+.chip.all{--c:var(--ink)}
+.chip.all[aria-pressed="true"]{color:var(--accent-ink)}
 .share{font-size:.85rem;color:var(--muted);margin-left:4px}
 .warn{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 12px;margin-top:12px;font-size:.92rem}
 .empty{color:var(--muted);margin:0 0 12px}
@@ -256,7 +257,7 @@ function renderItems(){
       </div>
       <div class="chips">
         ${AP0.map(p=>`<button class="chip" style="--c:${color(p)}" data-p="${esc(p.id)}" aria-pressed="${w.includes(p.id)}">${esc(pname(p))}</button>`).join("")}
-        <button class="chip all" data-all="1">${n===AP0.length?"Clear":"Everyone"}</button>
+        <button class="chip all" data-all="1" aria-pressed="${n===AP0.length}">Everyone</button>
         ${n>1&&cents(it.price)?`<span class="share">${money(Math.floor(cents(it.price)/n))} each</span>`:""}
       </div>
     </div>`}).join("");
