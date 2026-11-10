@@ -101,6 +101,10 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 .owe .small{opacity:.8;font-size:.9rem}
 .g-note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:.92rem}
 .local-note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:.92rem}
+.qi .qw{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:.82rem;color:var(--muted)}
+.qi .wp{display:inline-flex;align-items:center;gap:5px}
+.qi .qw .dot{width:9px;height:9px;box-shadow:0 0 0 1.5px var(--surface)}
+.qi[aria-pressed="true"] .qw{color:#fff}
 </style>
 </head>
 <body>
@@ -754,8 +758,9 @@ function renderGuest(){
     h+=`<section><h2>Tap what you ordered</h2><p class="share" style="margin:0 0 10px">You are <strong>${esc(gname(me))}</strong>. <button class="linkbtn" id="gChange" type="button">Not you?</button> If someone shares a dish with you, they tap it too and the price is split.</p>`;
     h+=state.items.map(it=>{
       const wh=whoOf(it),on=wh.includes(myPid);
-      const dots=wh.length?wh.map(id=>{const p=AP.find(x=>x.id===id);return p?`<i class="dot" style="--c:${color(p)}" title="${esc(pname(p))}"></i>`:""}).join(""):"<em>nobody yet</em>";
-      return `<button class="qi" data-gi="${it.id}" aria-pressed="${on}" style="--c:${color(me)}"><span class="qn">${esc(it.name||"Item")}</span><span class="qd">${dots}</span><span class="qp">${money(cents(it.price))}</span></button>`;
+      const lab=p=>p.id===myPid?"You":(gname(p)==="the host"?"Host":pname(p));
+      const who=wh.length?wh.map(id=>{const p=AP.find(x=>x.id===id);return p?`<span class="wp"><i class="dot" style="--c:${color(p)}"></i>${esc(lab(p))}</span>`:""}).join(""):`<span class="wp">Nobody yet</span>`;
+      return `<button class="qi" data-gi="${it.id}" aria-pressed="${on}" style="--c:${color(me)}"><span class="qn">${esc(it.name||"Item")}<span class="qw">${who}</span></span><span class="qp">${money(cents(it.price))}</span></button>`;
     }).join("")+`</section>`;
     if(r.unassigned>0)h+=`<div class="warn" style="margin-top:0">${money(r.unassigned)} of items haven’t been picked by anyone yet. Your amount can change as others pick.</div>`;
   }
