@@ -117,6 +117,7 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
     <h2>Let friends pick their own items</h2>
     <p>Send this link to your friends. They don’t need an account. They open it, tap their name, tap what they ordered, and it shows up here by itself.</p>
     <div class="row" style="margin-bottom:10px"><input id="friendLink" readonly aria-label="Link to send to friends" style="flex:1" onclick="this.select()"><button id="copyLink" class="primary" type="button">Copy link</button></div>
+    <div id="copyMsg" class="share" role="status" style="margin:-4px 0 10px;min-height:1.3em"></div>
     <div id="shareInfo" class="share" role="status" style="margin:0 0 10px">No friends have joined yet.</div>
     <div class="actions" style="margin-top:0"><button id="clearPicks" type="button">Clear friends’ picks</button><button id="newBill" type="button">Start a new bill</button><span id="saveState" class="share" role="status"></span></div>
     <p style="margin:12px 0 0;font-size:.88rem">Bookmark this page’s own address to come back to this bill. Keep it to yourself: anyone who has it can edit the bill. Only share the link above.</p>
@@ -690,8 +691,10 @@ function startHost(hash){
   renderPeople();
   ["input","change","click"].forEach(t=>$("host").addEventListener(t,()=>{touched=true;saveSoon()}));
   $("copyLink").addEventListener("click",async()=>{
-    try{await navigator.clipboard.writeText($("friendLink").value);setSaveStatus("Link copied")}
-    catch(_){$("friendLink").select();setSaveStatus("Select the link and copy it")}
+    const m=$("copyMsg");let ok=true;
+    try{await navigator.clipboard.writeText($("friendLink").value);m.textContent="Link copied"}
+    catch(_){ok=false;$("friendLink").select();m.textContent="Select the link and copy it"}
+    clearTimeout(m._t);m._t=setTimeout(()=>{m.textContent=""},ok?2500:6000);
   });
   confirmButton("clearPicks","Clear friends’ picks",async()=>{
     try{await rpc("clear_picks",{p_id:BILLID,p_token:TOKEN});lastSig="";pollHost()}catch(_){setSaveStatus("Couldn’t clear picks. Try again.")}
