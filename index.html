@@ -103,6 +103,20 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 .g-note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:.92rem}
 .local-note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:.92rem}
 .ver{text-align:center;color:var(--muted);font-size:1rem;margin:18px 0 8px}
+
+.amtcol{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.paybtn{border-radius:999px;padding:6px 14px;border:1.5px solid var(--ok);background:transparent;color:var(--ok);font-size:.9rem;font-weight:600}
+.paybtn[aria-pressed="true"]{background:var(--ok);color:var(--ok-ink)}
+.paybtn.wide{display:block;width:100%;padding:12px 16px;font-size:1rem;margin:0 0 16px;border-radius:12px}
+.paidnote{background:var(--surface);border:1.5px solid var(--ok);color:var(--ok);border-radius:12px;padding:12px 16px;margin:0 0 16px;font-weight:700}
+.paidnote span{font-weight:400;color:var(--muted);font-size:.88rem;margin-left:4px}
+.paystat{font-size:.85rem;font-weight:600;color:var(--muted)}
+.paystat[data-on="true"]{color:var(--ok)}
+.recv{display:flex;justify-content:space-between;padding-top:8px;font-size:.95rem;color:var(--muted)}
+.recv:last-of-type{color:var(--ink);font-weight:600}
+:root{--ok:#1c7a4a;--ok-ink:#ffffff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ok:#6fd3a0;--ok-ink:#0e1424}}
+:root[data-theme="dark"]{--ok:#6fd3a0;--ok-ink:#0e1424}
 .qi .qw{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:.82rem;color:var(--muted)}
 .qi .wp{display:inline-flex;align-items:center;gap:5px}
 .qi .qw .dot{width:9px;height:9px;box-shadow:0 0 0 1.5px var(--surface)}
@@ -319,9 +333,10 @@ function update(){
     const extra=r.tot[i]-r.sub[i];
     return `<div class="sum-row ${payer?"payer":""}">
       <div class="who"><span class="dot" style="--c:${color(p)}"></span><span>${esc(pname(p))}${payer?'<small>Paid the bill, own share</small>':`<small>${money(r.sub[i])} food${adjText(extra)}</small>`}</span></div>
-      <div class="amt">${money(r.tot[i])}</div></div>`}).join("");
+      ${(!payer&&r.tot[i]>0&&typeof payBtn==="function")?`<div class="amtcol"><div class="amt">${money(r.tot[i])}</div>${payBtn(p.id)}</div>`:`<div class="amt">${money(r.tot[i])}</div>`}</div>`}).join("");
   const owed=r.tot.reduce((a,b,i)=>i===r.pi?a:a+b,0);
   html+=`<div class="total"><span>Owed to ${esc(pname(AP[r.pi]))}</span><span>${money(owed)}</span></div>`;
+  if(typeof paidTotals==="function"&&owed>0)html+=paidTotals(r,AP,owed);
   if(r.unassigned>0)html+=`<div class="warn">${money(r.unassigned)} of items aren’t assigned to anyone yet and are left out of the totals.</div>`;
   $("summary").innerHTML=html;
   window._r=r;
@@ -568,6 +583,7 @@ let mode="host",BILLID="",TOKEN="",myUid=null;
 let loaded=false,touched=false,lastSaved="",saveTimer=null,saving=false,again=false;
 let billExists=false,netErr=false,guestMsg="",inflight=0,lastSig="";
 const wq={};
+state.paid=state.paid||{};
 const rand=n=>{const a=new Uint8Array(Math.ceil(n/2));crypto.getRandomValues(a);return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("").slice(0,n)};
 async function rpc(name,args){
   const r=await fetch(SB_URL+"/rest/v1/rpc/"+name,{method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},body:JSON.stringify(args)});
@@ -577,14 +593,15 @@ async function rpc(name,args){
 }
 function setSaveStatus(t){const el=$("saveState");if(el)el.textContent=t}
 function refilterClaims(){
-  claims=rawClaims.filter(c=>c.billId===state.billId&&Array.isArray(c.itemIds)).map(c=>({uid:c.uid,billId:c.billId,personId:c.personId==null?null:c.personId,ownName:c.ownName||null,itemIds:c.itemIds.slice()}));
+  claims=rawClaims.filter(c=>c.billId===state.billId&&Array.isArray(c.itemIds)).map(c=>({uid:c.uid,billId:c.billId,personId:c.personId==null?null:c.personId,ownName:c.ownName||null,itemIds:c.itemIds.slice(),paidAt:c.paidAt||0}));
 }
 function readClaims(rows){
   rawClaims=(Array.isArray(rows)?rows:[]).map(r=>({
     uid:String(r.friend_id),billId:BILLID,
     personId:/^\d+$/.test(String(r.person_id==null?"":r.person_id))?+r.person_id:null,
     ownName:r.name||null,
-    itemIds:(Array.isArray(r.item_ids)?r.item_ids:[]).map(Number)
+    itemIds:(Array.isArray(r.item_ids)?r.item_ids:[]).map(Number).filter(n=>n>0),
+    paidAt:(Array.isArray(r.item_ids)?r.item_ids:[]).map(Number).reduce((m,n)=>n<0?Math.max(m,-n):m,0)
   }));
   refilterClaims();
 }
@@ -597,12 +614,13 @@ function applyBill(d){
   uid=Math.max(uid,+d.nextId||0,...ids);
   ["cur","venue","when","rtotal","svc","tax","tip"].forEach(k=>{if(d[k]!=null)$(k).value=String(d[k])});
   $("taxOnSvc").checked=d.taxOnSvc!==false;
+  state.paid=(d.paid&&typeof d.paid==="object"&&!Array.isArray(d.paid))?d.paid:{};
 }
 function billData(){
   return{people:state.people.map(p=>({id:p.id,name:p.name})),
     items:state.items.map(i=>({id:i.id,name:i.name,price:i.price,who:i.who,block:i.block||[]})),
     payerId:state.payerId,nextId:uid,cur:$("cur").value,venue:$("venue").value,when:$("when").value,
-    rtotal:$("rtotal").value,svc:$("svc").value,tax:$("tax").value,tip:$("tip").value,taxOnSvc:$("taxOnSvc").checked};
+    rtotal:$("rtotal").value,svc:$("svc").value,tax:$("tax").value,tip:$("tip").value,taxOnSvc:$("taxOnSvc").checked,paid:state.paid||{}};
 }
 function decodeBill(h){
   try{
@@ -613,6 +631,33 @@ function decodeBill(h){
 }
 function friendUrl(){return location.href.split("#")[0].split("?")[0]+"?b="+BILLID}
 function hostUrl(){return "?b="+BILLID+"&h="+TOKEN}
+
+
+// ---- paid status ----
+// A friend's "paid" flag travels inside their picks as a negative number (minus the time they tapped).
+// The host's mark lives in the bill data as {v:true/false,t:time}. Whichever was set last wins.
+function paidInfo(pid){
+  let ft=0;
+  claims.forEach(c=>{if(String(claimPid(c))===String(pid)&&(c.paidAt||0)>ft)ft=c.paidAt});
+  const h=state.paid&&state.paid[String(pid)];
+  if(h&&typeof h.t==="number"&&h.t>=ft)return !!h.v;
+  return ft>0;
+}
+function payBtn(pid){
+  const on=paidInfo(pid);
+  return `<button type="button" class="paybtn" data-paid="${esc(String(pid))}" aria-pressed="${on}">${on?"Paid \u2713":"Mark as paid"}</button>`;
+}
+function paidTotals(r,AP,owed){
+  let got=0;AP.forEach((p,i)=>{if(i!==r.pi&&r.tot[i]>0&&paidInfo(p.id))got+=r.tot[i]});
+  return `<div class="recv"><span>Received</span><span>${money(got)}</span></div><div class="recv"><span>Still to receive</span><span>${money(owed-got)}</span></div>`;
+}
+function paidList(r,AP){
+  const rows=AP.map((p,i)=>({p,i})).filter(x=>x.i!==r.pi&&r.tot[x.i]>0);
+  if(!rows.length)return `<p class="empty" style="margin:0">Nobody owes anything yet.</p>`;
+  const owed=rows.reduce((a,x)=>a+r.tot[x.i],0);
+  return rows.map(({p,i})=>{const on=paidInfo(p.id);
+    return `<div class="sum-row"><div class="who"><span class="dot" style="--c:${color(p)}"></span><span>${esc(gname(p))}</span></div><div class="amtcol"><div class="amt">${money(r.tot[i])}</div><span class="paystat" data-on="${on}">${on?"Paid \u2713":"Waiting"}</span></div></div>`}).join("")+paidTotals(r,AP,owed);
+}
 
 // ---- host ----
 function saveSoon(){
@@ -693,6 +738,12 @@ function startHost(hash){
   $("friendLink").value=friendUrl();
   renderPeople();
   ["input","change","click"].forEach(t=>$("host").addEventListener(t,()=>{touched=true;saveSoon()}));
+  $("summary").addEventListener("click",e=>{
+    const b=e.target.closest("[data-paid]");if(!b)return;
+    const k=b.dataset.paid;state.paid=state.paid||{};
+    state.paid[k]={v:!paidInfo(k),t:Date.now()};
+    update();saveSoon();
+  });
   $("copyLink").addEventListener("click",async()=>{
     const m=$("copyMsg");let ok=true;
     try{await navigator.clipboard.writeText($("friendLink").value);m.textContent="Link copied"}
@@ -706,7 +757,7 @@ function startHost(hash){
     try{await rpc("clear_picks",{p_id:BILLID,p_token:TOKEN})}catch(_){}
     BILLID=rand(24);TOKEN=rand(32);state.billId=BILLID;
     state.people=[{id:uid++,name:"You"},{id:uid++,name:"Friend 1"},{id:uid++,name:"Friend 2"}];
-    state.payerId=state.people[0].id;state.items=[];state.brush=null;
+    state.payerId=state.people[0].id;state.items=[];state.brush=null;state.paid={};
     ["venue","when","rtotal"].forEach(k=>$(k).value="");
     ["svc","tax","tip"].forEach(k=>$(k).value="0");
     $("taxOnSvc").checked=true;
@@ -725,7 +776,7 @@ function myClaim(){return claims.find(c=>c.uid===myUid)}
 function writeMine(c){
   inflight++;
   const p=(wq.mine||Promise.resolve())
-    .then(()=>rpc("submit_picks",{p_id:BILLID,p_friend:myUid,p_person:c.personId==null?null:String(c.personId),p_name:c.ownName||null,p_items:c.itemIds}))
+    .then(()=>rpc("submit_picks",{p_id:BILLID,p_friend:myUid,p_person:c.personId==null?null:String(c.personId),p_name:c.ownName||null,p_items:c.paidAt?c.itemIds.concat([-c.paidAt]):c.itemIds}))
     .then(()=>{guestMsg=""},()=>{guestMsg="Couldn’t save your picks. Check your connection and tap again."})
     .then(()=>{inflight--;renderGuest()});
   wq.mine=p;return p;
@@ -733,7 +784,7 @@ function writeMine(c){
 function upsertMine(patch){
   if(!myUid)return;
   let c=myClaim();
-  if(!c){c={uid:myUid,billId:state.billId,personId:null,ownName:null,itemIds:[]};claims.push(c)}
+  if(!c){c={uid:myUid,billId:state.billId,personId:null,ownName:null,itemIds:[],paidAt:0};claims.push(c)}
   Object.assign(c,patch);guestMsg="";
   writeMine(c);renderGuest();
 }
@@ -761,6 +812,12 @@ function renderGuest(){
     const isPayer=myPid===state.payerId;
     const extra=r.tot[idx]-r.sub[idx];
     h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe "+esc(gname(payer))}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${extra>0?" + "+money(extra)+" service charge, tax and tip":""}</div></div>`;
+    if(!isPayer&&r.tot[idx]>0){
+      h+=paidInfo(myPid)
+        ?`<div class="paidnote">Marked as paid \u2713 <span>${esc(gname(payer))} can see this.</span></div>`
+        :`<button type="button" class="paybtn wide" id="gPaid">I\u2019ve paid \u2014 mark as paid</button>`;
+    }
+    if(isPayer)h+=`<section><h2>Who has paid you</h2>${paidList(r,AP)}</section>`;
     h+=`<section><h2>Tap what you ordered</h2><p class="share" style="margin:0 0 10px">You are <strong>${esc(gname(me))}</strong>. <button class="linkbtn" id="gChange" type="button">Not you?</button> If someone shares a dish with you, they tap it too and the price is split.</p>`;
     h+=state.items.map(it=>{
       const wh=whoOf(it),on=wh.includes(myPid);
@@ -780,7 +837,8 @@ $("guest").addEventListener("click",e=>{
     if(!n){$("gName").focus();return}
     upsertMine({personId:null,ownName:n});return;
   }
-  if(e.target.closest("#gChange")){upsertMine({personId:null,ownName:null,itemIds:[]});return}
+  if(e.target.closest("#gChange")){upsertMine({personId:null,ownName:null,itemIds:[],paidAt:0});return}
+  if(e.target.closest("#gPaid")){upsertMine({paidAt:Date.now()});return}
   const qi=e.target.closest("[data-gi]");
   if(qi){
     const mine=myClaim();if(!mine)return;
@@ -797,7 +855,7 @@ async function pollGuest(){
     const rows=await rpc("get_picks",{p_id:BILLID});
     readClaims(rows);netErr=false;
   }catch(e){netErr=true}
-  const sig=JSON.stringify([billExists,netErr,guestMsg,state.items,state.people,state.payerId,rawClaims,$("venue").value,$("when").value,$("svc").value,$("tax").value,$("tip").value,$("cur").value,$("taxOnSvc").checked]);
+  const sig=JSON.stringify([billExists,netErr,guestMsg,state.items,state.people,state.payerId,rawClaims,$("venue").value,$("when").value,$("svc").value,$("tax").value,$("tip").value,$("cur").value,$("taxOnSvc").checked,state.paid]);
   if(sig!==lastSig){lastSig=sig;renderGuest()}
 }
 function startGuest(){
