@@ -532,7 +532,7 @@ let dl=null;
 (async()=>{try{if(window.claude)dl=await claude.use("downloads")}catch(_){}})();
 function imageName(){
   const clean=t=>String(t||"").replace(/[\\/:*?"<>|\u0000-\u001f]+/g,"-").replace(/\s+/g," ").trim();
-  const n=[clean($("venue").value)||"Bill split",clean($("when").value)].filter(Boolean).join(" ").slice(0,100).trim();
+  const n=["Bill Splitter",clean($("venue").value),clean($("when").value)].filter(Boolean).join("_").slice(0,120).trim();
   return n+".png";
 }
 $("exportImg").onclick=async()=>{
