@@ -307,7 +307,16 @@ function totalsFor(base){
   const tip=Math.round(net*pct("tip")/100);
   return{base,net,svc,tax,tip,total:net+svc+tax+tip};
 }
-const adjText=e=>e>0?" + "+money(e)+" service/tax/tip":"";
+function extraNames(sep,last){
+  const n=[];
+  if(pct("svc")>0)n.push("service charge");
+  if(pct("tax")>0)n.push("tax");
+  if(pct("tip")>0)n.push("tip");
+  if(!n.length)return "";
+  if(sep==="/")return n.map(x=>x==="service charge"?"service":x).join("/");
+  return n.length===1?n[0]:n.slice(0,-1).join(", ")+" "+last+" "+n[n.length-1];
+}
+const adjText=e=>{const l=e>0?extraNames("/"):"";return l?" + "+money(e)+" "+l:""};
 function compute(){
   const AP=allPeople();
   const sub=AP.map(()=>0);let unassigned=0,subtotal=0;
@@ -872,7 +881,7 @@ function renderGuest(){
     const me=AP.find(p=>p.id===myPid),idx=AP.findIndex(p=>p.id===myPid);
     const isPayer=myPid===state.payerId;
     const extra=r.tot[idx]-r.sub[idx];
-    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe "+esc(gname(payer))}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${extra>0?" + "+money(extra)+" service charge, tax and tip":""}</div></div>`;
+    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe "+esc(gname(payer))}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${(extra>0&&extraNames(",","and"))?" + "+money(extra)+" "+extraNames(",","and"):""}</div></div>`;
     if(state.final){h+=finalHtml(r,AP,payer,me,myPid,isPayer,idx);h+=payConfirm?payModal(payer,r.tot[idx]):"";g.innerHTML=h;return}
     h+=`<section><h2>Tap what you ordered</h2><p class="share" style="margin:0 0 10px">You are <strong>${esc(gname(me))}</strong>. <button class="linkbtn" id="gChange" type="button">Not you?</button> If someone shares a dish with you, they tap it too and the price is split.</p>`;
     h+=state.items.map(it=>{
