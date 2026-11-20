@@ -851,7 +851,7 @@ function finalHtml(r,AP,payer,me,myPid,isPayer,idx){
       :`<button type="button" class="paybtn wide" id="gPaid">Mark as paid</button>`;
   }
   const who=(wh)=>wh.length?wh.map(id=>{const p=AP.find(x=>x.id===id);return p?`<span class="wp"><i class="dot" style="--c:${color(p)}"></i>${esc(p.id===myPid?"You":(gname(p)==="the host"?"Host":pname(p)))}</span>`:""}).join(""):`<span class="wp">Nobody</span>`;
-  h+=`<section><h2>Final tally</h2><p class="share" style="margin:0 0 6px">${esc(gname(payer))} paid the whole bill. Everyone else pays ${esc(gname(payer))}:</p>${paidList(r,AP,myPid)}</section>`;
+  h+=`<section><h2>Final tally</h2><p class="share" style="margin:0 0 6px"><strong>${esc(gname(payer))}</strong> paid the whole bill. Everyone else pays <strong>${esc(gname(payer))}</strong>:</p>${paidList(r,AP,myPid)}</section>`;
   h+=`<section><h2>What everyone had</h2>${state.items.map(it=>`<div class="qi fi"><div class="qn">${esc(it.name||"Item")}<span class="qw">${who(whoOf(it))}</span></div><div class="qp">${money(cents(it.price))}</div></div>`).join("")}`
     +`<div class="bill" style="margin-top:10px">${billLines(r).map(([l,v,s])=>`<div class="bill-row${s?" strong":""}"><span>${l}</span><span>${v}</span></div>`).join("")}</div>`
     +(r.unassigned>0?`<div class="warn" style="margin:0">${money(r.unassigned)} of items weren’t assigned to anyone and aren’t included above.</div>`:"")+`</section>`;
@@ -881,7 +881,7 @@ function renderGuest(){
     const me=AP.find(p=>p.id===myPid),idx=AP.findIndex(p=>p.id===myPid);
     const isPayer=myPid===state.payerId;
     const extra=r.tot[idx]-r.sub[idx];
-    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe "+esc(gname(payer))}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${(extra>0&&extraNames(",","and"))?" + "+money(extra)+" "+extraNames(",","and"):""}</div></div>`;
+    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe <strong>"+esc(gname(payer))+"</strong>"}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${(extra>0&&extraNames(",","and"))?" + "+money(extra)+" "+extraNames(",","and"):""}</div></div>`;
     if(state.final){h+=finalHtml(r,AP,payer,me,myPid,isPayer,idx);h+=payConfirm?payModal(payer,r.tot[idx]):"";g.innerHTML=h;return}
     h+=`<section><h2>Tap what you ordered</h2><p class="share" style="margin:0 0 10px">You are <strong>${esc(gname(me))}</strong>. <button class="linkbtn" id="gChange" type="button">Not you?</button> If someone shares a dish with you, they tap it too and the price is split.</p>`;
     h+=state.items.map(it=>{
