@@ -530,9 +530,21 @@ function buildImage(){
 }
 let dl=null;
 (async()=>{try{if(window.claude)dl=await claude.use("downloads")}catch(_){}})();
+function ymd(t){
+  t=String(t||"").trim();if(!t)return "";
+  const MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  let d,m,y,x;
+  if((x=t.match(/(\d{4})[\/.\-\s](\d{1,2})[\/.\-\s](\d{1,2})(?!\d)/))){y=+x[1];m=+x[2];d=+x[3]}
+  else if((x=t.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4}|\d{2})(?!\d)/))){d=+x[1];m=+x[2];y=+x[3];if(y<100)y+=2000;if(m>12&&d<=12){const k=d;d=m;m=k}}
+  else if((x=t.match(/(\d{1,2})(?:st|nd|rd|th)?[\s\-]+([A-Za-z]{3,9})\.?,?[\s\-]+(\d{4}|\d{2})(?!\d)/))){d=+x[1];m=MON[x[2].slice(0,3).toLowerCase()];y=+x[3];if(y<100)y+=2000}
+  else if((x=t.match(/([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4}|\d{2})(?!\d)/))){m=MON[x[1].slice(0,3).toLowerCase()];d=+x[2];y=+x[3];if(y<100)y+=2000}
+  if(!(y>=1900&&m>=1&&m<=12&&d>=1&&d<=31))return "";
+  const z=n=>String(n).padStart(2,"0");
+  return y+" "+z(m)+" "+z(d);
+}
 function imageName(){
   const clean=t=>String(t||"").replace(/[\\/:*?"<>|\u0000-\u001f]+/g,"-").replace(/\s+/g," ").trim();
-  const n=["Bill Splitter",clean($("venue").value),clean($("when").value)].filter(Boolean).join("_").slice(0,120).trim();
+  const n=["Bill Splitter",clean($("venue").value),ymd($("when").value)||clean($("when").value)].filter(Boolean).join("_").slice(0,120).trim();
   return n+".png";
 }
 $("exportImg").onclick=async()=>{
