@@ -107,6 +107,9 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 .amtcol{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .paybtn{border-radius:999px;padding:6px 14px;border:1.5px solid var(--ok);background:transparent;color:var(--ok);font-size:1rem;font-weight:800}
 .paybtn[aria-pressed="true"]{background:var(--ok);color:var(--ok-ink)}
+.owepay{display:block;width:100%;margin-top:14px;padding:14px 16px;border:0;border-radius:12px;background:var(--accent-ink);color:var(--accent);font-size:1.25rem;font-weight:800}
+.owepaid{margin-top:14px;padding-top:12px;border-top:1px solid rgba(127,127,127,.5);font-size:1.25rem;font-weight:800}
+.owepaid span{display:block;font-size:.95rem;font-weight:400;opacity:.85;margin-top:2px}
 .paybtn.wide{display:block;width:100%;padding:14px 16px;font-size:1.25rem;font-weight:800;margin:0 0 16px;border-radius:12px}
 .paidnote{background:var(--surface);border:1.5px solid var(--ok);color:var(--ok);border-radius:12px;padding:12px 16px;margin:0 0 16px;font-weight:700}
 .paidnote span{font-weight:400;color:var(--muted);font-size:.88rem;margin-left:4px}
@@ -845,11 +848,6 @@ function payModal(payer,amt){
 }
 function finalHtml(r,AP,payer,me,myPid,isPayer,idx){
   let h="";
-  if(!isPayer&&r.tot[idx]>0){
-    h+=paidInfo(myPid)
-      ?`<div class="paidnote">Marked as paid \u2713 <span>${esc(gname(payer))} can see this.</span></div>`
-      :`<button type="button" class="paybtn wide" id="gPaid">Mark as paid</button>`;
-  }
   const who=(wh)=>wh.length?wh.map(id=>{const p=AP.find(x=>x.id===id);return p?`<span class="wp"><i class="dot" style="--c:${color(p)}"></i>${esc(p.id===myPid?"You":(gname(p)==="the host"?"Host":pname(p)))}</span>`:""}).join(""):`<span class="wp">Nobody</span>`;
   h+=`<section><h2>Final tally</h2><p class="share" style="margin:0 0 6px"><strong>${esc(gname(payer))}</strong> paid the whole bill. Everyone else pays <strong>${esc(gname(payer))}</strong>:</p>${paidList(r,AP,myPid)}</section>`;
   h+=`<section><h2>What everyone had</h2>${state.items.map(it=>`<div class="qi fi"><div class="qn">${esc(it.name||"Item")}<span class="qw">${who(whoOf(it))}</span></div><div class="qp">${money(cents(it.price))}</div></div>`).join("")}`
@@ -881,7 +879,7 @@ function renderGuest(){
     const me=AP.find(p=>p.id===myPid),idx=AP.findIndex(p=>p.id===myPid);
     const isPayer=myPid===state.payerId;
     const extra=r.tot[idx]-r.sub[idx];
-    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe <strong>"+esc(gname(payer))+"</strong>"}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${(extra>0&&extraNames(",","and"))?" + "+money(extra)+" "+extraNames(",","and"):""}</div></div>`;
+    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe <strong>"+esc(gname(payer))+"</strong>"}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${(extra>0&&extraNames(",","and"))?" + "+money(extra)+" "+extraNames(",","and"):""}</div>${(state.final&&!isPayer&&r.tot[idx]>0)?(paidInfo(myPid)?`<div class="owepaid">Marked as paid \u2713 <span>${esc(gname(payer))} can see this.</span></div>`:`<button type="button" class="owepay" id="gPaid">Mark as paid</button>`):""}</div>`;
     if(state.final){h+=finalHtml(r,AP,payer,me,myPid,isPayer,idx);h+=payConfirm?payModal(payer,r.tot[idx]):"";g.innerHTML=h;return}
     h+=`<section><h2>Tap what you ordered</h2><p class="share" style="margin:0 0 10px">You are <strong>${esc(gname(me))}</strong>. <button class="linkbtn" id="gChange" type="button">Not you?</button> If someone shares a dish with you, they tap it too and the price is split.</p>`;
     h+=state.items.map(it=>{
