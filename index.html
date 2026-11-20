@@ -310,15 +310,6 @@ function totalsFor(base){
   const tip=Math.round(net*pct("tip")/100);
   return{base,net,svc,tax,tip,total:net+svc+tax+tip};
 }
-function extraNames(sep,last){
-  const n=[];
-  if(pct("svc")>0)n.push("service charge");
-  if(pct("tax")>0)n.push("GST");
-  if(pct("tip")>0)n.push("tip");
-  if(!n.length)return "";
-  if(sep==="/")return n.map(x=>x==="service charge"?"service":x).join("/");
-  return n.length===1?n[0]:n.slice(0,-1).join(", ")+" "+last+" "+n[n.length-1];
-}
 function extraParts(r,idx){
   const extra=r.tot[idx]-r.sub[idx];
   if(!(extra>0)||!r.assigned)return [];
@@ -329,7 +320,7 @@ function extraParts(r,idx){
   if(diff){let k=0;parts.forEach((x,i)=>{if(x[1]>parts[k][1])k=i});parts[k][1]+=diff}
   return parts.filter(x=>x[1]>0);
 }
-const adjText=e=>{const l=e>0?extraNames("/"):"";return l?" + "+money(e)+" "+l:""};
+const extraLine=(r,i)=>[money(r.sub[i])+" for food"].concat(extraParts(r,i).map(x=>"+ "+money(x[1])+" for "+x[0]));
 function compute(){
   const AP=allPeople();
   const sub=AP.map(()=>0);let unassigned=0,subtotal=0;
@@ -375,7 +366,7 @@ function update(){
     const payer=i===r.pi;
     const extra=r.tot[i]-r.sub[i];
     return `<div class="sum-row ${payer?"payer":""}">
-      <div class="who"><span class="dot" style="--c:${color(p)}"></span><span>${esc(pname(p))}${payer?'<small>Paid the bill, own share</small>':`<small>${money(r.sub[i])} food${adjText(extra)}</small>`}</span></div>
+      <div class="who"><span class="dot" style="--c:${color(p)}"></span><span>${esc(pname(p))}${payer?'<small>Paid the bill, own share</small>':`<small>${extraLine(r,i).join(" ")}</small>`}</span></div>
       ${(!payer&&r.tot[i]>0&&typeof payBtn==="function")?`<div class="amtcol"><div class="amt">${money(r.tot[i])}</div>${payBtn(p.id)}</div>`:`<div class="amt">${money(r.tot[i])}</div>`}</div>`}).join("");
   const owed=r.tot.reduce((a,b,i)=>i===r.pi?a:a+b,0);
   html+=`<div class="total"><span>Owed to ${esc(pname(AP[r.pi]))}</span><span>${money(owed)}</span></div>`;
@@ -520,8 +511,12 @@ function buildImage(){
       T(fit(pname(p)+" pays "+pname(payer),"600 17px "+F,W-2*pad-120),pad+20,y,"600 17px "+F,INK);
       T(money(r.tot[i]),W-pad,y,"800 22px "+F,INK,"right");
       y+=22;
-      const ex=r.tot[i]-r.sub[i];
-      T("Food "+money(r.sub[i])+adjText(ex),pad+20,y,"400 13px "+F,MUTED);
+      let line="";const maxw=W-pad-(pad+20);
+      extraLine(r,i).forEach(seg=>{
+        const t=line?line+" "+seg:seg;ctx.font="400 13px "+F;
+        if(line&&ctx.measureText(t).width>maxw){T(line,pad+20,y,"400 13px "+F,MUTED);y+=19;line=seg}else line=t;
+      });
+      T(line,pad+20,y,"400 13px "+F,MUTED);
       y+=32;
     });
     T(fit(pname(payer)+"’s own share: "+money(r.tot[r.pi]),"400 14px "+F,W-2*pad),pad,y,"400 14px "+F,MUTED);
