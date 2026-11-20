@@ -530,6 +530,11 @@ function buildImage(){
 }
 let dl=null;
 (async()=>{try{if(window.claude)dl=await claude.use("downloads")}catch(_){}})();
+function imageName(){
+  const clean=t=>String(t||"").replace(/[\\/:*?"<>|\u0000-\u001f]+/g,"-").replace(/\s+/g," ").trim();
+  const n=[clean($("venue").value)||"Bill split",clean($("when").value)].filter(Boolean).join(" ").slice(0,100).trim();
+  return n+".png";
+}
 $("exportImg").onclick=async()=>{
   const st=$("exportStatus");
   if(!state.items.length){st.textContent="Add at least one item first.";return}
@@ -540,11 +545,11 @@ $("exportImg").onclick=async()=>{
   const blob=await new Promise(res=>cv.toBlob(res,"image/png"));
   if(!blob){st.textContent="Couldn’t make the image. Try again.";return}
   if(!dl){
-    try{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bill-split.png";document.body.appendChild(a);a.click();a.remove();st.textContent="Image saved. If nothing downloaded, press and hold the preview below to save it."}
+    try{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=imageName();document.body.appendChild(a);a.click();a.remove();st.textContent="Image saved. If nothing downloaded, press and hold the preview below to save it."}
     catch(_){st.textContent="Press and hold, or right-click, the preview below to save it."}
     return;
   }
-  try{await dl.save({filename:"bill-split.png",data:blob});st.textContent="Image ready."}
+  try{await dl.save({filename:imageName(),data:blob});st.textContent="Image ready."}
   catch(e){st.textContent=e&&e.code==="declined"?"Save cancelled. The preview is below.":"Couldn’t save directly. Press and hold, or right-click, the preview to save it."}
 };
 
