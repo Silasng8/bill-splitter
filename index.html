@@ -874,7 +874,7 @@ function renderGuest(){
   const mine=myClaim(),myPid=mine?claimPid(mine):null;
   const r=compute();
   const venue=$("venue").value.trim(),when=$("when").value.trim();
-  let h=`<div class="g-head"><div class="v">${esc(venue||"Bill split")}</div>${when?`<div class="d">${esc(when)}</div>`:""}<div class="d">Paid by ${esc(gname(payer))}</div></div>`;
+  let h=`<div class="g-head"><div class="v">${esc(venue||"Bill split")}</div>${when?`<div class="d">${esc(when)}</div>`:""}</div>`;
   if(netErr)h+=`<div class="g-note">Can’t reach the bill right now. Trying again…</div>`;
   else if(guestMsg)h+=`<div class="g-note">${esc(guestMsg)}</div>`;
   if(myPid==null){
