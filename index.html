@@ -194,13 +194,13 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
   </section>
 
   <section>
-    <h2>Service charge, tax and tip</h2>
+    <h2>Service charge, GST and tip</h2>
     <div class="extras">
       <label>Service charge (%)<input id="svc" inputmode="decimal" value="0"></label>
-      <label>Tax / GST (%)<input id="tax" inputmode="decimal" value="0"></label>
+      <label>GST (%)<input id="tax" inputmode="decimal" value="0"></label>
       <label>Tip (%)<input id="tip" inputmode="decimal" value="0"></label>
     </div>
-    <label class="check"><input type="checkbox" id="taxOnSvc" checked> Tax is also charged on the service charge</label>
+    <label class="check"><input type="checkbox" id="taxOnSvc" checked> GST is also charged on the service charge</label>
     <p class="sub" style="margin:10px 0 0;font-size:.88rem">Shared in proportion to what each person ordered.</p>
   </section>
 
@@ -310,7 +310,7 @@ function totalsFor(base){
 function extraNames(sep,last){
   const n=[];
   if(pct("svc")>0)n.push("service charge");
-  if(pct("tax")>0)n.push("tax");
+  if(pct("tax")>0)n.push("GST");
   if(pct("tip")>0)n.push("tip");
   if(!n.length)return "";
   if(sep==="/")return n.map(x=>x==="service charge"?"service":x).join("/");
@@ -340,7 +340,7 @@ function compute(){
 function billLines(r){
   const a=r.all,L=[["Items subtotal",money(a.base)]];
   if(a.svc)L.push(["Service charge ("+pct("svc")+"%)",money(a.svc)]);
-  if(a.tax)L.push(["Tax ("+pct("tax")+"%)",money(a.tax)]);
+  if(a.tax)L.push(["GST ("+pct("tax")+"%)",money(a.tax)]);
   if(a.tip)L.push(["Tip ("+pct("tip")+"%)",money(a.tip)]);
   L.push(["Total bill",money(a.total),true]);
   return L;
@@ -351,7 +351,7 @@ function billBlock(r){
   let chk="";const rt=cents($("rtotal").value);
   if(rt){
     const d=a.total-rt;
-    chk=d===0?`<div class="okmsg"><strong>Matches the receipt total.</strong></div>`:`<div class="warn">Your total is ${money(Math.abs(d))} ${d>0?"higher":"lower"} than the receipt total of ${money(rt)}${Math.abs(d)<=5?", which may just be rounding.":". Check the item prices, service charge and tax."}</div>`;
+    chk=d===0?`<div class="okmsg"><strong>Matches the receipt total.</strong></div>`:`<div class="warn">Your total is ${money(Math.abs(d))} ${d>0?"higher":"lower"} than the receipt total of ${money(rt)}${Math.abs(d)<=5?", which may just be rounding.":". Check the item prices, service charge and GST."}</div>`;
   }
   return `<div class="bill">${billLines(r).map(([l,v,s])=>row(l,v,s)).join("")}</div>${chk}`;
 }
