@@ -319,6 +319,16 @@ function extraNames(sep,last){
   if(sep==="/")return n.map(x=>x==="service charge"?"service":x).join("/");
   return n.length===1?n[0]:n.slice(0,-1).join(", ")+" "+last+" "+n[n.length-1];
 }
+function extraParts(r,idx){
+  const extra=r.tot[idx]-r.sub[idx];
+  if(!(extra>0)||!r.assigned)return [];
+  const f=r.sub[idx]/r.assigned,a=r.asg;
+  const parts=[["service charge",Math.round(a.svc*f)],["GST",Math.round(a.tax*f)],["tip",Math.round(a.tip*f)]].filter(x=>pct(x[0]==="service charge"?"svc":x[0]==="GST"?"tax":"tip")>0);
+  if(!parts.length)return [];
+  const diff=extra-parts.reduce((t,x)=>t+x[1],0);
+  if(diff){let k=0;parts.forEach((x,i)=>{if(x[1]>parts[k][1])k=i});parts[k][1]+=diff}
+  return parts.filter(x=>x[1]>0);
+}
 const adjText=e=>{const l=e>0?extraNames("/"):"";return l?" + "+money(e)+" "+l:""};
 function compute(){
   const AP=allPeople();
@@ -338,7 +348,7 @@ function compute(){
   const diff=totalAssigned-tot.reduce((a,b)=>a+b,0);
   const pi=Math.max(0,AP.findIndex(p=>p.id===state.payerId));
   if(tot.length)tot[pi]+=diff;
-  return{sub,tot,unassigned,subtotal,assigned,totalAssigned,all,pi};
+  return{sub,tot,unassigned,subtotal,assigned,totalAssigned,all,asg,pi};
 }
 function billLines(r){
   const a=r.all,L=[["Items subtotal",money(a.base)]];
@@ -879,7 +889,7 @@ function renderGuest(){
     const me=AP.find(p=>p.id===myPid),idx=AP.findIndex(p=>p.id===myPid);
     const isPayer=myPid===state.payerId;
     const extra=r.tot[idx]-r.sub[idx];
-    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe <strong>"+esc(gname(payer))+"</strong>"}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${(extra>0&&extraNames(",","and"))?" + "+money(extra)+" "+extraNames(",","and"):""}</div>${(state.final&&!isPayer&&r.tot[idx]>0)?(paidInfo(myPid)?`<div class="owepaid">Marked as paid \u2713 <span>${esc(gname(payer))} can see this.</span></div>`:`<button type="button" class="owepay" id="gPaid">Mark as paid</button>`):""}</div>`;
+    h+=`<div class="owe"><div class="small">${isPayer?"You paid the bill. Your own share is":"You owe <strong>"+esc(gname(payer))+"</strong>"}</div><div class="big">${money(r.tot[idx])}</div><div class="small">${money(r.sub[idx])} for your food${extraParts(r,idx).map(x=>" + "+money(x[1])+" for "+x[0]).join("")}</div>${(state.final&&!isPayer&&r.tot[idx]>0)?(paidInfo(myPid)?`<div class="owepaid">Marked as paid \u2713 <span>${esc(gname(payer))} can see this.</span></div>`:`<button type="button" class="owepay" id="gPaid">Mark as paid</button>`):""}</div>`;
     if(state.final){h+=finalHtml(r,AP,payer,me,myPid,isPayer,idx);h+=payConfirm?payModal(payer,r.tot[idx]):"";g.innerHTML=h;return}
     h+=`<section><h2>Tap what you ordered</h2><p class="share" style="margin:0 0 10px">You are <strong>${esc(gname(me))}</strong>. <button class="linkbtn" id="gChange" type="button">Not you?</button> If someone shares a dish with you, they tap it too and the price is split.</p>`;
     h+=state.items.map(it=>{
